@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess</title>
+    <style>
+        body, html, .main {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Poppins', sans-serif;
+            position: relative; /* 让内容与背景层不互相干扰 */
+        }
+        .content {
+            position: relative;
+            display: grid;
+            place-items: center;
+            height: 100%;
+            color: white;
+            text-align: center;
+            z-index: 1; /* 确保内容在背景层上方 */
+            padding: 10px;
+        }
+
+        h1{
+            font-family:Comic Sans MS;
+            display:flex;
+            
+            color: aqua;
+            justify-content: center;
+            align-items:center;
+            font-size: 3em;
+            height: 60vh;
+            
+        }
+        a:hover{
+            color: red;
+        }
+        h2{
+           
+            display:flex;
+            justify-content:center;
+            align-items: center;
+            height: 0;
+            transform: translateY(-120px);
+        }
+        .animated-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            z-index: -1; /* 背景保持在最底层 */
+            background: linear-gradient(135deg, 
+                #ff9a9e, #fad0c4, #fbc2eb, #a18cd1, #8ec5fc, 
+                #e0c3fc, #9be15d, #ff7e5f, #feb47b, #ff6e7f);
+            background-size: 400% 400%;
+            animation: smoothFlow 40s linear infinite;
+        }
+
+        /* 动画效果 */
+        @keyframes smoothFlow {
+            0% { background-position: 0% 0%; }
+            50% { background-position: 100% 100%; }
+            100% { background-position: 0% 0%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-bg"></div>
+    <h1>Welcome to chess game</h1>
+    <h2><a href="chesses.html">Play Now</a></h2>
+</body>
+</html>

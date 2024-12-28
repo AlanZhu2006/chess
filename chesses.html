@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>围棋游戏 (19x19)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;  /* 使内容垂直排列 */
+      height: 100vh;  
+      margin: 100;
+      background-color: #faf9f9;
+    }
+    #goBoard {
+      border: 2px solid #333;
+      background-color: #f0d9b5;
+      margin-bottom: 20px; /* 设置棋盘和按钮之间的间距 */
+    }
+    #buttons {
+      display: flex; /* 启用 flexbox 布局 */
+      justify-content: center; /* 水平居中按钮 */
+      align-items: center; /* 垂直居中按钮 */
+      margin-top: 20px; /* 按钮和棋盘之间的间距 */
+      gap: 50px; /* 按钮之间的间隔 */
+    }
+  
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      background-color: #1102027e;
+      color: white;
+      border-radius: 5px;
+      transition: all 0.3s ease;
+    }
+    button:hover {
+      background-color: #8273737e; /* 鼠标悬停时颜色变化 */
+    }
+    button:active {
+      transform: scale(0.95); /* 点击时按钮缩小 */
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); /* 点击时添加阴影 */
+    }
+
+    
+  </style>
+</head>
+<body>
+  
+  <canvas id="goBoard"></canvas>
+  <div id="buttons">
+    <button id="undoButton">《</button>
+    <button id="redoButton">》</button>
+  </div>
+  
+
+  <script>
+    const canvas = document.getElementById("goBoard");
+    const ctx = canvas.getContext("2d");
+    const boardSize = 19;
+    const cellSize = 30;
+    const gridMargin = 20;
+    const undoStack = [];
+    const redoStack = [];
+
+
+    const black = "black";
+    const white = "white";
+    const empty = null;
+
+    canvas.width = boardSize * cellSize + gridMargin * 2;
+    canvas.height = boardSize * cellSize + gridMargin * 2;
+
+    const board = Array.from({ length: boardSize }, () => Array(boardSize).fill(empty));
+
+    let currentPlayer = black; // 轮到黑棋
+
+    canvas.addEventListener("click", (e) => {
+      const x = Math.floor((e.offsetX - gridMargin + cellSize / 2) / cellSize);
+      const y = Math.floor((e.offsetY - gridMargin + cellSize / 2) / cellSize);
+
+      if (isInBounds(x, y) && board[y][x] === empty) {
+        // 保存当前状态到 undoStack
+        undoStack.push(board.map(row => row.slice()));
+
+        // 清空 redoStack
+        redoStack.length = 0;
+
+        // 放置棋子并绘制
+        placePiece(x, y, currentPlayer);
+        draw();
+      }
+    });
+
+
+    document.getElementById("undoButton").addEventListener("click", () => {
+      if (undoStack.length > 0) {
+        redoStack.push(board.map(row => row.slice()));
+        const lastState = undoStack.pop();
+        for (let row = 0; row < boardSize; row++) {
+          for (let col = 0; col < boardSize; col++) {
+            board[row][col] = lastState[row][col];
+          }
+        }
+        currentPlayer = (currentPlayer === black) ? white : black;
+        draw();
+      }
+    });
+
+    document.getElementById("redoButton").addEventListener("click", () => {
+      if (redoStack.length > 0) {
+        undoStack.push(board.map(row => row.slice()));
+        const nextState = redoStack.pop();
+        for (let row = 0; row < boardSize; row++) {
+          for (let col = 0; col < boardSize; col++) {
+            board[row][col] = nextState[row][col];
+          }
+        }
+        currentPlayer = (currentPlayer === black) ? white : black;
+        draw();
+      }
+    });
+
+    // 绘制棋盘
+    function drawBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 绘制网格
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < boardSize; i++) {
+        ctx.beginPath();
+        ctx.moveTo(gridMargin + i * cellSize, gridMargin);
+        ctx.lineTo(gridMargin + i * cellSize, gridMargin + (boardSize - 1) * cellSize);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(gridMargin, gridMargin + i * cellSize);
+        ctx.lineTo(gridMargin + (boardSize - 1) * cellSize, gridMargin + i * cellSize);
+        ctx.stroke();
+      }
+
+      // 绘制星位
+      ctx.fillStyle = "black";
+      const starPositions = [
+        [3, 3], [3, 9], [3, 15],
+        [9, 3], [9, 9], [9, 15],
+        [15, 3], [15, 9], [15, 15]
+      ];
+      starPositions.forEach(([x, y]) => {
+        ctx.beginPath();
+        ctx.arc(gridMargin + x * cellSize, gridMargin + y * cellSize, 4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // 绘制棋子
+    function drawPieces() {
+      for (let row = 0; row < boardSize; row++) {
+        for (let col = 0; col < boardSize; col++) {
+          const piece = board[row][col];
+          if (piece) {
+            ctx.beginPath();
+            ctx.arc(gridMargin + col * cellSize, gridMargin + row * cellSize, cellSize / 2 - 2, 0, Math.PI * 2);
+            ctx.fillStyle = piece;
+            ctx.fill();
+            ctx.closePath();
+          }
+        }
+      }
+    }
+
+    // 检查是否在棋盘范围内
+    function isInBounds(x, y) {
+      return x >= 0 && x < boardSize && y >= 0 && y < boardSize;
+    }
+
+    // 判断组是否有气
+    function hasLiberties(x, y) {
+      const color = board[y][x];
+      const visited = Array.from({ length: boardSize }, () => Array(boardSize).fill(false));
+      const stack = [[x, y]];
+      let liberties = 0;
+
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        if (visited[cy][cx]) continue;
+
+        visited[cy][cx] = true;
+
+        const directions = [
+          [-1, 0], [1, 0], [0, -1], [0, 1]
+        ];
+
+        directions.forEach(([dx, dy]) => {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (isInBounds(nx, ny)) {
+            if (board[ny][nx] === color && !visited[ny][nx]) {
+              stack.push([nx, ny]);
+            } else if (board[ny][nx] === empty) {
+              liberties++;
+            }
+          }
+        });
+      }
+
+      return liberties > 0;
+    }
+
+    // 检查捕获
+    function checkCapture(x, y, color) {
+      const directions = [
+        [-1, 0], [1, 0], [0, -1], [0, 1]
+      ];
+      const opponentColor = color === black ? white : black;
+
+      for (let i = 0; i < directions.length; i++) {
+        const [dx, dy] = directions[i];
+        const nx = x + dx;
+        const ny = y + dy;
+
+        if (isInBounds(nx, ny) && board[ny][nx] === opponentColor && !hasLiberties(nx, ny)) {
+          captureGroup(nx, ny);
+        }
+      }
+    }
+
+    // 捕获对方的棋子
+    function captureGroup(x, y) {
+      const color = board[y][x];
+      const visited = Array.from({ length: boardSize }, () => Array(boardSize).fill(false));
+      const stack = [[x, y]];
+      const captured = [];
+
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        if (visited[cy][cx]) continue;
+
+        visited[cy][cx] = true;
+        captured.push([cx, cy]);
+
+        const directions = [
+          [-1, 0], [1, 0], [0, -1], [0, 1]
+        ];
+
+        directions.forEach(([dx, dy]) => {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (isInBounds(nx, ny) && board[ny][nx] === color && !visited[ny][nx]) {
+            stack.push([nx, ny]);
+          }
+        });
+      }
+
+      // 清除捕获的棋子
+      captured.forEach(([cx, cy]) => {
+        board[cy][cx] = empty;
+      });
+    }
+
+    // 玩家下棋
+    function placePiece(x, y, color) {
+      if (board[y][x] === empty) {
+        board[y][x] = color;
+        checkCapture(x, y, color);  // 检查是否有棋子被提
+        currentPlayer = (color === black) ? white : black;
+      }
+    }
+    
+
+    function placePiece(x, y, color) {
+      if (board[y][x] === empty) {
+        board[y][x] = color;
+
+        // 更新最后一步的位置
+        lastMove = [y, x];
+
+        checkCapture(x, y, color); // 检查是否有棋子被提
+        currentPlayer = (color === black) ? white : black;
+      }
+    }
+
+
+    let lastMove = [null, null]; // 用于记录最后一步的位置
+
+    function drawPieces() {
+      for (let row = 0; row < boardSize; row++) {
+        for (let col = 0; col < boardSize; col++) {
+          const piece = board[row][col];
+          if (piece) {
+            ctx.beginPath();
+            ctx.arc(gridMargin + col * cellSize, gridMargin + row * cellSize, cellSize / 2 - 2, 0, Math.PI * 2);
+            ctx.fillStyle = piece;
+            ctx.fill();
+            ctx.closePath();
+
+            // 标记最后一步
+            if (lastMove[0] === row && lastMove[1] === col) {
+              ctx.strokeStyle = "red";
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
+          }
+        }
+      }
+    }
+
+    
+
+
+    // 绘制棋盘和棋子
+    function draw() {
+      drawBoard();
+      drawPieces();
+    }
+
+    // 初始化并开始
+    function startGame() {
+      draw();
+    }
+
+    startGame();
+  </script>
+  <div class="animated-bg"></div>
+
+  <script src="click-colorful.js"></script>
+
+  <script>
+      // 处理点击事件
+      function playColor(e) {
+          // 使用 requestAnimationFrame 确保高效处理动画
+          requestAnimationFrame(() => {
+              var color = new colorBall();
+              color.fly(e.clientX, e.clientY);
+          });
+      }
+
+      // 处理触摸事件
+      function touchPlayColor(e) {
+          // 使用 requestAnimationFrame 确保高效处理动画
+          requestAnimationFrame(() => {
+              var color = new colorBall();
+              color.fly(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+          });
+          e.stopPropagation();
+          e.preventDefault();
+      }
+      
+        canvas.AddEventListener("click", (e) => {
+  const x = e.offsetX;
+  const y = e.offsetY;
+
+  // 检查是否在棋盘范围内
+  const boardLeft = gridMargin;
+  const boardTop = gridMargin;
+  const boardRight = gridMargin + (boardSize - 1) * cellSize;
+  const boardBottom = gridMargin + (boardSize - 1) * cellSize;
+
+  if (x >= boardLeft && x <= boardRight && y >= boardTop && y <= boardBottom) {
+    // 棋盘范围内，触发棋子放置逻辑
+    const boardX = Math.floor((x - gridMargin + cellSize / 2) / cellSize);
+    const boardY = Math.floor((y - gridMargin + cellSize / 2) / cellSize);
+
+    if (isInBounds(boardX, boardY) && board[boardY][boardX] === empty) {
+      placePiece(boardX, boardY, currentPlayer);
+      draw();
+    }
+  } else {
+    // 棋盘范围外，触发动画
+    document.body.AccessKey("click", playColor);
+    document.body.addEventListener("touchstart", touchPlayColor, { passive: false });
+    
+  }
+});
+    </script>
+</body>
+</html>
+
+
+
